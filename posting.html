@@ -1,0 +1,55 @@
+<!-- Harshil Patel
+hap793 / 11290942
+cmpt353 asn2 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posting</title>
+</head>
+<body>
+    <script type = "text/javascript">
+    function post(){
+        var http = new XMLHttpRequest();
+        var url = '/post';
+        var topic = 'topic='+ document.getElementById("topic").value;
+        var data = 'data=' + document.getElementById("data").value;
+        var params = `${topic}&${data}`
+        http.open('POST', url, true);
+        http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+        alert('File saved.');
+        http.send(params);
+    }
+
+    function view(){
+        var http = new XMLHttpRequest();
+        var url = '/getData';
+        http.open('GET',url,true);
+        http.onreadystatechange = function() 
+    { 
+        if(http.readyState == 4 && http.status == 200) 
+        {    
+            document.getElementById("view").value = http.responseText;             
+        }
+    };
+        http.send();
+    }
+    </script>    
+    <!-- layout -->
+    <label for="topic">Topic</label> 
+    <input type="text" name="topic" id="topic">
+    <br> <br>
+    <label for="data">Data</label>
+    <textarea name="data" id="data" cols="50" rows="10"></textarea>
+    <br><br>
+    <label for="view">Post</label>
+    <textarea name="view" id="view" cols="50" rows="10"></textarea>
+    <br><br>
+    <button onclick="post()">Post</button>
+    <button onclick="view()">View</button>
+
+
+</body>
+</html>

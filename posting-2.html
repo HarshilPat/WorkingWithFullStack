@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Posting</title>
+</head>
+<body>
+    <p>This page will be automatically updated every 20 seconds.</p>
+    <h2>Welcome To The Chats.</h2>
+      <script type = "text/javascript">
+
+          function viewPost()
+          {
+              var http = new XMLHttpRequest();
+              var url = '/loadchat';
+                 
+              http.open('GET', url, true);
+          
+              http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+          
+              http.onreadystatechange = function() 
+              { 
+                  if(http.readyState == 4 && http.status == 200) 
+                  {
+                       
+                      var response = JSON.parse(http.responseText);
+          
+                      document.getElementById("answer1").value = response.answer;
+                  
+                  }
+              };
+          
+              http.send();
+          };
+
+          function createPost()
+          {
+              var http = new XMLHttpRequest();
+              var url = '/chat';
+              var params = 'topic=' + document.getElementById("input1").value +'&data=' + document.getElementById("input2").value; 
+                
+              http.open('POST', url, true);
+
+              http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+
+              http.onreadystatechange = function() 
+              { 
+                  if(http.readyState == 4 && http.status == 200) 
+                  {
+                      
+                      var response = JSON.parse(http.responseText);
+                      alert(response.answer);
+                  }
+            };
+
+            http.send(params);
+            setTimeout("location.reload(true);",2);
+            };
+            
+          function topicAsc()
+            {
+              var http = new XMLHttpRequest();
+              var url = '/topicasc';
+                 
+              http.open('GET', url, true);
+          
+              http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+          
+              http.onreadystatechange = function() 
+              { 
+                  if(http.readyState == 4 && http.status == 200) 
+                  {
+                       
+                      var response = JSON.parse(http.responseText);
+                      alert(response.answer);
+                  
+                  }
+              };
+          
+              http.send();
+              setTimeout("location.reload(true);",2);
+            };
+            function topicDesc()
+            {
+              var http = new XMLHttpRequest();
+              var url = '/topicdesc';
+                 
+              http.open('GET', url, true);
+          
+              http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+          
+              http.onreadystatechange = function() 
+              { 
+                  if(http.readyState == 4 && http.status == 200) 
+                  {
+                       
+                      var response = JSON.parse(http.responseText);
+                      alert(response.answer);
+                  
+                  }
+              };
+          
+              http.send();
+              setTimeout("location.reload(true);",2);
+            };
+            function timeAsc()
+            {
+              var http = new XMLHttpRequest();
+              var url = '/timeasc';
+                 
+              http.open('GET', url, true);
+          
+              http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+          
+              http.onreadystatechange = function() 
+              { 
+                  if(http.readyState == 4 && http.status == 200) 
+                  {
+                       
+                      var response = JSON.parse(http.responseText);
+                      alert(response.answer);
+                  
+                  }
+              };
+          
+              http.send();
+              setTimeout("location.reload(true);",2);
+            };
+            function timeDesc()
+            {
+              var http = new XMLHttpRequest();
+              var url = '/timedesc';
+                 
+              http.open('GET', url, true);
+          
+              http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+          
+              http.onreadystatechange = function() 
+              { 
+                  if(http.readyState == 4 && http.status == 200) 
+                  {
+                       
+                      var response = JSON.parse(http.responseText);
+                      alert(response.answer);
+                  
+                  }
+              };
+          
+              http.send();
+              setTimeout("location.reload(true);",2);
+            };
+
+            function refreshChat(){
+              setTimeout("location.reload(true);",2);
+            }
+          
+          </script>
+          
+            <p><b>Want to view all the posts. Click the button below.</b></p>
+            <button  onclick= "viewPost()"  > View all posts </button><br><br>
+            <textarea id="answer1">   </textarea>
+
+            <p><b>Want to post a new message. Enter the topic and data and click the button below.</b></p>
+            <label for="Topic"> Topic:</label><br> <br>
+            <input id="input1" type="text" topic="topic" value=""><br> <br>
+            <label for="Data"> Data:</label><br> <br>
+            <input id="input2" type="text" data="data" value=""><br> <br>
+            <button  onclick= "createPost()"  > Create a new post </button><br>
+        
+            <p><b>Sort the table in ascending or descending according to topic or time.</b></p>
+            <button  onclick= "topicAsc()"  > Topic (Asc.) </button>
+            <button  onclick= "topicDesc()"  > Topic (Desc.) </button>
+            <button  onclick= "timeAsc()"  > Time (Asc.) </button>
+            <button  onclick= "timeDesc()"  > Time (Desc.) </button><br><br>
+            <button  onclick= "refreshChat()"  > Refresh the page. </button><br>
+
+            <br>
+
+</body>
+</html>

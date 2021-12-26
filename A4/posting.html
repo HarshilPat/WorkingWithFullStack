@@ -1,0 +1,129 @@
+<!-- Harshil Patel
+hap793 / 11290942
+cmpt353 asn4 -->
+<!DOCTYPE html>
+<html lang="en">
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Posting</title></head>
+<body>
+
+    <script type = "text/javascript">
+        function post(){
+            var http = new XMLHttpRequest();
+            var url = '/post';
+            var topic = 'topic='+ document.getElementById("topic").value;
+            var data = 'data=' + document.getElementById("data").value;
+            var params = `${topic}&${data}`
+            http.open('POST', url, true);
+            http.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+            http.send(params);
+        }
+    
+        function view(){
+            var http = new XMLHttpRequest();
+            var url = '/getData';
+            http.onreadystatechange = function() 
+        { 
+            if(http.readyState == 4 && http.status == 200) 
+            {    
+                document.getElementById("view").value = http.responseText;
+            }
+        };
+            http.open('GET',url,true);
+            http.send();
+        }
+
+        function viewTopicAsc(){
+            var http = new XMLHttpRequest();
+            var url = '/getTopicAsc';
+            http.onreadystatechange = function() 
+        { 
+            if(http.readyState == 4 && http.status == 200) 
+            {    
+                document.getElementById("view").value = http.responseText;
+            }
+        };
+            http.open('GET',url,true);
+            http.send();
+        }
+
+        function viewTopicDsc(){
+            var http = new XMLHttpRequest();
+            var url = '/getTopicDsc';
+            http.onreadystatechange = function() 
+        { 
+            if(http.readyState == 4 && http.status == 200) 
+            {    
+                document.getElementById("view").value = http.responseText;
+            }
+        };
+            http.open('GET',url,true);
+            http.send();
+        }
+
+        function viewTimeAsc(){
+            var http = new XMLHttpRequest();
+            var url = '/getTimeAsc';
+            http.onreadystatechange = function() 
+        { 
+            if(http.readyState == 4 && http.status == 200) 
+            {    
+                document.getElementById("view").value = http.responseText;
+            }
+        };
+            http.open('GET',url,true);
+            http.send();
+        }
+
+        function viewTimeDsc(){
+            var http = new XMLHttpRequest();
+            var url = '/getTimeDsc';
+            http.open('GET',url,true);
+            http.onreadystatechange = function() 
+        { 
+            if(http.readyState == 4 && http.status == 200) 
+            {    
+                document.getElementById("view").value = http.responseText;
+            }
+        };
+            http.send();
+        }
+
+
+        </script>    
+        <!-- layout -->
+        <label for="topic">Topic</label> 
+        <input type="text" name="topic" id="topic">
+        <br> <br>
+        <label for="data">Data</label>
+        <textarea name="data" id="data" cols="50" rows="10"></textarea>
+        <br><br>
+        <label for="view">Post</label>
+        <textarea name="view" id="view" cols="50" rows="10"></textarea>
+        <br><br>
+        <button onclick="post()">Post</button>
+        <button onclick="view()">View</button>
+
+        <br>
+        <br>
+        <br>
+    
+    <!-- <div> -->
+        <!-- <form> -->
+            <button onclick="viewTopicAsc()">Topic (Asc.)</button>
+            <button onclick="viewTopicDsc()">Topic (Dsc.)</button>
+            <button onclick="viewTimeAsc()">Time (Asc.)</button>
+            <button onclick="viewTimeDsc()">Time (Dsc.)</button>
+            <!-- <input type="radio" id="topic-ascend" name="sort" checked=true> Topic (Asc.)
+            <input type="radio" id="topic-descend" name="sort" > Topic (Desc.)
+            <input type="radio" id="time-ascend" name="sort" > Time (Asc.)
+            <input type="radio" id="time-descend" name="sort" > Time (Desc.) -->
+        <!-- </form> -->
+    <!-- </div> -->
+
+</body>
+</html>
