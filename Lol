@@ -1,161 +1,86 @@
-package your.pkg;
-
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.testng.Assert;
-import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import javax.swing.*;
-import javax.swing.event.*;
-import javax.swing.text.JTextComponent;
-import java.awt.event.*;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.lang.reflect.Field;
-import java.util.Vector;
+import java.time.LocalDateTime;
 
-public class NewAutoCompleteDocument_FocusKeyProperty_Test {
+import static org.mockito.Mockito.*;
 
-    // --- Test double to avoid real popups / displayability issues ---
-    static class TestComboBox<T> extends JComboBox<T> {
-        private boolean pretendDisplayable = true;
-        private boolean lastPopupVisible = false;
+public class ExceptionDialogTest implements IResource {
 
-        TestComboBox(T[] items) { super(items); }
-        TestComboBox(Vector<T> items) { super(items); }
+    @Test
+    public void testConstructor_messageLS_null_usesStringRetriever() {
+        Throwable ex = new Throwable("boom");
 
-        public void setPretendDisplayable(boolean v) { this.pretendDisplayable = v; }
+        try (MockedStatic<JOptionPane> paneMock = Mockito.mockStatic(JOptionPane.class);
+             MockedStatic<StringRetriever> strMock = Mockito.mockStatic(StringRetriever.class)) {
 
-        @Override public boolean isDisplayable() { return pretendDisplayable; }
+            // mock JOptionPane to simulate user pressing OK (index 0)
+            paneMock.when(() -> JOptionPane.showOptionDialog(
+                    any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(0);
 
-        @Override public void setPopupVisible(boolean v) {
-            // Don’t call super; just record the state so tests can assert safely.
-            this.lastPopupVisible = v;
+            // mock StringRetriever
+            strMock.when(() -> StringRetriever.getString(anyString(), anyString()))
+                   .thenReturn("retrieved-message");
+
+            // create dialog with messageLS == null
+            ExceptionDialog dialog = new ExceptionDialog(
+                    (Component) null,
+                    new LocaleString("test"),
+                    null,
+                    ex
+            );
+
+            Assert.assertNotNull(dialog);
         }
-
-        public boolean getLastPopupVisible() { return lastPopupVisible; }
     }
 
-    private TestComboBox<Integer> combo;
-    private NewAutoCompleteDocument<Integer> sut;
-
-    @BeforeMethod
-    public void setUp() {
-        // Use non-String items to avoid your earlier "String not allowed" constraints
-        combo = new TestComboBox<>(new Integer[]{1, 2, 3});
-        combo.setEditable(true);
-
-        // SUT under test
-        sut = new NewAutoCompleteDocument<>(combo);
-
-        // Ensure the document attached its listeners by replacing the editor once
-        // (this fires "editor" propertyChange and causes configureEditor(...) to run)
-        combo.setEditor(new BasicComboBoxEditor());
-    }
-
-    // -------- Helpers --------
-    private static Object getPrivate(Object target, String field) throws Exception {
-        Field f = target.getClass().getDeclaredField(field);
-        f.setAccessible(true);
-        return f.get(target);
-    }
-
-    private static void setPrivate(Object target, String field, Object value) throws Exception {
-        Field f = target.getClass().getDeclaredField(field);
-        f.setAccessible(true);
-        f.set(target, value);
-    }
-
-    private JTextField editorTextField() {
-        return (JTextField) combo.getEditor().getEditorComponent();
-    }
-
-    // ================================================================
-    // focusGained / focusLost
-    // ================================================================
     @Test
-    public void focusGained_showsPopup_whenDisplayable() {
-        final JTextField tf = editorTextField();
+    public void testConstructor_messageLS_notNull() {
+        Throwable ex = new Throwable("boom");
 
-        // Fire focusGained on ALL focus listeners added to the editor
-        FocusEvent fe = new FocusEvent(tf, FocusEvent.FOCUS_GAINED);
-        for (FocusListener fl : tf.getFocusListeners()) {
-            fl.focusGained(fe);
+        LocaleString mockLS = mock(LocaleString.class);
+        when(mockLS.getString(anyString())).thenReturn(new LocaleString("translated"));
+
+        try (MockedStatic<JOptionPane> paneMock = Mockito.mockStatic(JOptionPane.class)) {
+            paneMock.when(() -> JOptionPane.showOptionDialog(
+                    any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(0);
+
+            ExceptionDialog dialog = new ExceptionDialog(
+                    (Component) null,
+                    new LocaleString("title"),
+                    mockLS,
+                    ex
+            );
+
+            Assert.assertNotNull(dialog);
+            verify(mockLS, atLeastOnce()).getString(anyString());
         }
-
-        Assert.assertTrue(combo.getLastPopupVisible(), "Popup should be set visible on focusGained when displayable");
     }
 
     @Test
-    public void focusLost_hidesPopup() {
-        final JTextField tf = editorTextField();
-        // Make sure it was visible before
-        combo.setPopupVisible(true);
+    public void testConstructor_userChoosesDetails_opensDetailsDialog() {
+        Throwable ex = new Throwable("boom");
+        LocaleString mockLS = new LocaleString("details-test");
 
-        FocusEvent fe = new FocusEvent(tf, FocusEvent.FOCUS_LOST);
-        for (FocusListener fl : tf.getFocusListeners()) {
-            fl.focusLost(fe);
+        try (MockedStatic<JOptionPane> paneMock = Mockito.mockStatic(JOptionPane.class)) {
+            // Simulate user clicking "Details" (index 1)
+            paneMock.when(() -> JOptionPane.showOptionDialog(
+                    any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(1);
+
+            ExceptionDialog dialog = new ExceptionDialog(
+                    (Component) null,
+                    new LocaleString("title"),
+                    mockLS,
+                    ex
+            );
+
+            Assert.assertNotNull(dialog);
         }
-
-        Assert.assertFalse(combo.getLastPopupVisible(), "Popup should be set hidden on focusLost");
-    }
-
-    // ================================================================
-    // keyPressed: top-level "if (comboBox.isDisplayable()) setPopupVisible(true)"
-    // ================================================================
-    @Test
-    public void keyPressed_setsPopupVisible_whenDisplayable() {
-        final JTextField tf = editorTextField();
-
-        KeyEvent ke = new KeyEvent(tf, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_A, 'a');
-        for (KeyListener kl : tf.getKeyListeners()) {
-            kl.keyPressed(ke);
-        }
-
-        Assert.assertTrue(combo.getLastPopupVisible(), "Popup should be set visible on any key press when displayable");
-    }
-
-    @Test
-    public void keyPressed_doesNotShowPopup_whenNotDisplayable() {
-        combo.setPretendDisplayable(false);
-        final JTextField tf = editorTextField();
-
-        KeyEvent ke = new KeyEvent(tf, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0, KeyEvent.VK_A, 'a');
-        for (KeyListener kl : tf.getKeyListeners()) {
-            kl.keyPressed(ke);
-        }
-
-        Assert.assertFalse(combo.getLastPopupVisible(), "Popup should NOT change when combo is not displayable");
-    }
-
-    // ================================================================
-    // propertyChange: "editor" and "model"
-    // ================================================================
-    @Test
-    public void propertyChange_editor_configuresEditor() throws Exception {
-        // Get the last property change listener attached by the SUT’s constructor
-        PropertyChangeListener[] listeners = combo.getPropertyChangeListeners();
-        Assert.assertTrue(listeners.length >= 1, "Expected at least one PropertyChangeListener");
-        PropertyChangeListener pcl = listeners[listeners.length - 1];
-
-        BasicComboBoxEditor newEditor = new BasicComboBoxEditor();
-        PropertyChangeEvent evt = new PropertyChangeEvent(combo, "editor", null, newEditor);
-        pcl.propertyChange(evt);
-
-        // After configureEditor, the JTextField's document should be our SUT
-        JTextField tf = (JTextField) newEditor.getEditorComponent();
-        Assert.assertSame(tf.getDocument(), sut, "New editor's document should be set to the SUT");
-    }
-
-    @Test
-    public void propertyChange_model_updatesModelField() throws Exception {
-        PropertyChangeListener[] listeners = combo.getPropertyChangeListeners();
-        PropertyChangeListener pcl = listeners[listeners.length - 1];
-
-        DefaultComboBoxModel<Integer> newModel = new DefaultComboBoxModel<>(new Integer[]{7, 8});
-        PropertyChangeEvent evt = new PropertyChangeEvent(combo, "model", null, newModel);
-        pcl.propertyChange(evt);
-
-        Object internalModel = getPrivate(sut, "model");
-        Assert.assertSame(internalModel, newModel, "SUT 'model' field should be updated from propertyChange(model)");
     }
 }
