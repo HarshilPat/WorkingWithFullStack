@@ -1,63 +1,62 @@
-@Test
-public void ctor_messageLS_null_usesDefaultPath() {
-    Throwable ex = new Throwable("boom");
-    LocaleString title = new LocaleString();
+package ca.gc.cra.alse.trustsearchclient.tool;
 
-    try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
-        pane.when(() -> JOptionPane.showOptionDialog(
-                any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-            .thenReturn(0);
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
+import org.testng.Assert;
+import org.testng.annotations.Test;
 
-        // use the 3-arg constructor with messageLS = null
-        ExceptionDialog dialog = new ExceptionDialog(
-                (LocaleString) title,
-                (LocaleString) null,
-                ex
-        );
+import ca.gc.cra.rccr.lang.LocaleString;
 
-        Assert.assertNotNull(dialog);
+import static org.mockito.Mockito.*;
+
+public class RHDescriptionManagerTest {
+
+    RHDescriptionManager sut = RHDescriptionManager.getInstance();
+
+    @Test
+    public void getInstanceTest() {
+        Assert.assertNotNull(sut);
     }
-}
 
-@Test
-public void ctor_messageLS_notNull_branch() {
-    Throwable ex = new Throwable("boom");
-    LocaleString title = new LocaleString();
+    @Test
+    public void getDescription_cacheHit_returnsFromMap() {
+        // Arrange
+        RHLookUpTable lookupTable = mock(RHLookUpTable.class);
+        when(lookupTable.getFullCodeKey()).thenReturn("KEY1");
 
-    LocaleString mockLS = mock(LocaleString.class, RETURNS_DEEP_STUBS);
-    when(mockLS.getString(anyString()).getText(any())).thenReturn("msg-text");
+        LocaleString expected = new LocaleString("cached");
+        // put directly into the map (simulate cache hit)
+        sut.descriptionMap.put("KEY1", expected);
 
-    try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
-        pane.when(() -> JOptionPane.showOptionDialog(
-                any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-            .thenReturn(0);
+        // Act
+        LocaleString result = sut.getDescription(lookupTable);
 
-        // use the 3-arg constructor with a non-null messageLS
-        ExceptionDialog dialog = new ExceptionDialog(title, mockLS, ex);
-
-        Assert.assertNotNull(dialog);
-        verify(mockLS, atLeastOnce()).getString(anyString());
+        // Assert
+        Assert.assertEquals(result, expected);
     }
-}
 
-@Test
-public void ctor_userChoosesDetails_branch() {
-    Throwable ex = new Throwable("boom");
-    LocaleString title = new LocaleString();
-    LocaleString messageLS = new LocaleString();
+    @Test
+    public void getDescription_cacheMiss_fetchesFromRHLookupTool() {
+        // Arrange
+        RHLookUpTable lookupTable = mock(RHLookUpTable.class);
+        when(lookupTable.getFullCodeKey()).thenReturn("KEY2");
 
-    try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class);
-         MockedConstruction<ExceptionDetailsDialog> details =
-                 Mockito.mockConstruction(ExceptionDetailsDialog.class)) {
+        RHCode rhCode = mock(RHCode.class);
+        LocaleString expected = new LocaleString("from-rhcode");
+        when(rhCode.getDescription()).thenReturn(expected);
 
-        pane.when(() -> JOptionPane.showOptionDialog(
-                any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-            .thenReturn(1); // simulate clicking "Details"
+        try (MockedStatic<RHLookupTool> toolMock = Mockito.mockStatic(RHLookupTool.class)) {
+            toolMock.when(() -> RHLookupTool.getCode(lookupTable))
+                    .thenReturn(rhCode);
 
-        // again, use the real 3-arg constructor
-        new ExceptionDialog(title, messageLS, ex);
+            // Act
+            LocaleString result = sut.getDescription(lookupTable);
 
-        Assert.assertEquals(details.constructed().size(), 1,
-                "Expected ExceptionDetailsDialog to be created");
+            // Assert
+            Assert.assertEquals(result, expected);
+
+            // Verify it was cached for future calls
+            Assert.assertEquals(sut.descriptionMap.get("KEY2"), expected);
+        }
     }
 }
