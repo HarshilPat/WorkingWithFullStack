@@ -1,108 +1,63 @@
-package your.pkg.here;
+@Test
+public void ctor_messageLS_null_usesDefaultPath() {
+    Throwable ex = new Throwable("boom");
+    LocaleString title = new LocaleString();
 
-import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
-import org.testng.Assert;
-import org.testng.annotations.BeforeClass;
-import org.testng.annotations.Test;
+    try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
+        pane.when(() -> JOptionPane.showOptionDialog(
+                any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+            .thenReturn(0);
 
-import javax.swing.*;
+        // use the 3-arg constructor with messageLS = null
+        ExceptionDialog dialog = new ExceptionDialog(
+                (LocaleString) title,
+                (LocaleString) null,
+                ex
+        );
 
-import java.awt.Component;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-
-// adjust these imports to your actual packages
-import ca.gc.cra.rccr.lang.LocaleString;
-import ca.gc.cra.alse.trustsearchclient.exception.ExceptionDialog;
-import ca.gc.cra.alse.trustsearchclient.exception.ExceptionDetailsDialog;
-import ca.gc.cra.alse.trustsearchclient.resources.IResource;
-
-public class ExceptionDialogTest implements IResource {
-
-    @BeforeClass
-    public void headless() {
-        // Ensures Swing doesn't try to create real windows in CI
-        System.setProperty("java.awt.headless", "true");
+        Assert.assertNotNull(dialog);
     }
+}
 
-    @Test
-    public void ctor_messageLS_null_usesDefaultRetrievalPath() {
-        Throwable ex = new Throwable("boom");
-        LocaleString title = new LocaleString(); // any non-null title is fine
+@Test
+public void ctor_messageLS_notNull_branch() {
+    Throwable ex = new Throwable("boom");
+    LocaleString title = new LocaleString();
 
-        try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
-            // Simulate clicking "OK" (index 0)
-            pane.when(() -> JOptionPane.showOptionDialog(
-                    any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-                .thenReturn(0);
+    LocaleString mockLS = mock(LocaleString.class, RETURNS_DEEP_STUBS);
+    when(mockLS.getString(anyString()).getText(any())).thenReturn("msg-text");
 
-            // messageLS == null -> hits the 'if (messageLS == null) { ... }' branch
-            ExceptionDialog dialog = new ExceptionDialog(
-                    (Component) null,
-                    title,
-                    null,
-                    ex
-            );
+    try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
+        pane.when(() -> JOptionPane.showOptionDialog(
+                any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+            .thenReturn(0);
 
-            Assert.assertNotNull(dialog);
-        }
+        // use the 3-arg constructor with a non-null messageLS
+        ExceptionDialog dialog = new ExceptionDialog(title, mockLS, ex);
+
+        Assert.assertNotNull(dialog);
+        verify(mockLS, atLeastOnce()).getString(anyString());
     }
+}
 
-    @Test
-    public void ctor_messageLS_notNull_usesProvidedMessage() {
-        Throwable ex = new Throwable("boom");
-        LocaleString title = new LocaleString();
+@Test
+public void ctor_userChoosesDetails_branch() {
+    Throwable ex = new Throwable("boom");
+    LocaleString title = new LocaleString();
+    LocaleString messageLS = new LocaleString();
 
-        // Deep-stub a LocaleString so .getString(...).getText(...) returns something
-        LocaleString messageLS = mock(LocaleString.class, RETURNS_DEEP_STUBS);
-        when(messageLS.getString(anyString()).getText(any())).thenReturn("msg-text");
+    try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class);
+         MockedConstruction<ExceptionDetailsDialog> details =
+                 Mockito.mockConstruction(ExceptionDetailsDialog.class)) {
 
-        try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
-            pane.when(() -> JOptionPane.showOptionDialog(
-                    any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-                .thenReturn(0);
+        pane.when(() -> JOptionPane.showOptionDialog(
+                any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
+            .thenReturn(1); // simulate clicking "Details"
 
-            ExceptionDialog dialog = new ExceptionDialog(
-                    (Component) null,
-                    title,
-                    messageLS, // non-null -> else branch
-                    ex
-            );
+        // again, use the real 3-arg constructor
+        new ExceptionDialog(title, messageLS, ex);
 
-            Assert.assertNotNull(dialog);
-            verify(messageLS, atLeastOnce()).getString(anyString());
-        }
-    }
-
-    @Test
-    public void ctor_userChoosesDetails_invokesExceptionDetailsDialog() {
-        Throwable ex = new Throwable("boom");
-        LocaleString title = new LocaleString();
-        LocaleString messageLS = new LocaleString();
-
-        try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class);
-             // intercept constructor call so no real UI is created
-             MockedConstruction<ExceptionDetailsDialog> details =
-                     Mockito.mockConstruction(ExceptionDetailsDialog.class)) {
-
-            // Simulate clicking "Details" (index 1)
-            pane.when(() -> JOptionPane.showOptionDialog(
-                    any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-                .thenReturn(1);
-
-            new ExceptionDialog(
-                    (Component) null,
-                    title,
-                    messageLS,
-                    ex
-            );
-
-            // Verify the details dialog was constructed once
-            Assert.assertEquals(details.constructed().size(), 1,
-                    "Expected ExceptionDetailsDialog to be opened when user chose Details");
-        }
+        Assert.assertEquals(details.constructed().size(), 1,
+                "Expected ExceptionDetailsDialog to be created");
     }
 }
