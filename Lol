@@ -1,35 +1,48 @@
+package your.pkg.here;
+
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.testng.Assert;
+import org.testng.annotations.BeforeClass;
 import org.testng.annotations.Test;
 
 import javax.swing.*;
-import java.time.LocalDateTime;
 
+import java.awt.Component;
+
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+
+// adjust these imports to your actual packages
+import ca.gc.cra.rccr.lang.LocaleString;
+import ca.gc.cra.alse.trustsearchclient.exception.ExceptionDialog;
+import ca.gc.cra.alse.trustsearchclient.exception.ExceptionDetailsDialog;
+import ca.gc.cra.alse.trustsearchclient.resources.IResource;
 
 public class ExceptionDialogTest implements IResource {
 
+    @BeforeClass
+    public void headless() {
+        // Ensures Swing doesn't try to create real windows in CI
+        System.setProperty("java.awt.headless", "true");
+    }
+
     @Test
-    public void testConstructor_messageLS_null_usesStringRetriever() {
+    public void ctor_messageLS_null_usesDefaultRetrievalPath() {
         Throwable ex = new Throwable("boom");
+        LocaleString title = new LocaleString(); // any non-null title is fine
 
-        try (MockedStatic<JOptionPane> paneMock = Mockito.mockStatic(JOptionPane.class);
-             MockedStatic<StringRetriever> strMock = Mockito.mockStatic(StringRetriever.class)) {
-
-            // mock JOptionPane to simulate user pressing OK (index 0)
-            paneMock.when(() -> JOptionPane.showOptionDialog(
+        try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
+            // Simulate clicking "OK" (index 0)
+            pane.when(() -> JOptionPane.showOptionDialog(
                     any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-                    .thenReturn(0);
+                .thenReturn(0);
 
-            // mock StringRetriever
-            strMock.when(() -> StringRetriever.getString(anyString(), anyString()))
-                   .thenReturn("retrieved-message");
-
-            // create dialog with messageLS == null
+            // messageLS == null -> hits the 'if (messageLS == null) { ... }' branch
             ExceptionDialog dialog = new ExceptionDialog(
                     (Component) null,
-                    new LocaleString("test"),
+                    title,
                     null,
                     ex
             );
@@ -39,48 +52,57 @@ public class ExceptionDialogTest implements IResource {
     }
 
     @Test
-    public void testConstructor_messageLS_notNull() {
+    public void ctor_messageLS_notNull_usesProvidedMessage() {
         Throwable ex = new Throwable("boom");
+        LocaleString title = new LocaleString();
 
-        LocaleString mockLS = mock(LocaleString.class);
-        when(mockLS.getString(anyString())).thenReturn(new LocaleString("translated"));
+        // Deep-stub a LocaleString so .getString(...).getText(...) returns something
+        LocaleString messageLS = mock(LocaleString.class, RETURNS_DEEP_STUBS);
+        when(messageLS.getString(anyString()).getText(any())).thenReturn("msg-text");
 
-        try (MockedStatic<JOptionPane> paneMock = Mockito.mockStatic(JOptionPane.class)) {
-            paneMock.when(() -> JOptionPane.showOptionDialog(
+        try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class)) {
+            pane.when(() -> JOptionPane.showOptionDialog(
                     any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-                    .thenReturn(0);
+                .thenReturn(0);
 
             ExceptionDialog dialog = new ExceptionDialog(
                     (Component) null,
-                    new LocaleString("title"),
-                    mockLS,
+                    title,
+                    messageLS, // non-null -> else branch
                     ex
             );
 
             Assert.assertNotNull(dialog);
-            verify(mockLS, atLeastOnce()).getString(anyString());
+            verify(messageLS, atLeastOnce()).getString(anyString());
         }
     }
 
     @Test
-    public void testConstructor_userChoosesDetails_opensDetailsDialog() {
+    public void ctor_userChoosesDetails_invokesExceptionDetailsDialog() {
         Throwable ex = new Throwable("boom");
-        LocaleString mockLS = new LocaleString("details-test");
+        LocaleString title = new LocaleString();
+        LocaleString messageLS = new LocaleString();
 
-        try (MockedStatic<JOptionPane> paneMock = Mockito.mockStatic(JOptionPane.class)) {
-            // Simulate user clicking "Details" (index 1)
-            paneMock.when(() -> JOptionPane.showOptionDialog(
+        try (MockedStatic<JOptionPane> pane = Mockito.mockStatic(JOptionPane.class);
+             // intercept constructor call so no real UI is created
+             MockedConstruction<ExceptionDetailsDialog> details =
+                     Mockito.mockConstruction(ExceptionDetailsDialog.class)) {
+
+            // Simulate clicking "Details" (index 1)
+            pane.when(() -> JOptionPane.showOptionDialog(
                     any(), any(), any(), anyInt(), anyInt(), any(), any(), any()))
-                    .thenReturn(1);
+                .thenReturn(1);
 
-            ExceptionDialog dialog = new ExceptionDialog(
+            new ExceptionDialog(
                     (Component) null,
-                    new LocaleString("title"),
-                    mockLS,
+                    title,
+                    messageLS,
                     ex
             );
 
-            Assert.assertNotNull(dialog);
+            // Verify the details dialog was constructed once
+            Assert.assertEquals(details.constructed().size(), 1,
+                    "Expected ExceptionDetailsDialog to be opened when user chose Details");
         }
     }
 }
